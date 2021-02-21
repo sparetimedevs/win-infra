@@ -6,22 +6,22 @@ param mongoDbConnectionStringMain string = 'override-with-a-mongo-db-connection-
 
 module winStorageAccountDeployment './win-storage-account-template-spec.bicep' = {
   name: 'winStorageAccountDeployment'
-  params:{
+  params: {
     winStorageAccountName: winStorageAccountNameMain
   }
 }
 
 module winApimServiceDeployment './win-apim-service-template-spec.bicep' = {
   name: 'winApimServiceDeployment'
-  params:{
+  params: {
     winApimName: winApimNameMain
-    winApimPublisherEmail: winApimPublisherEmailMain    
+    winApimPublisherEmail: winApimPublisherEmailMain
   }
 }
 
 module winFunctionAppServiceDeployment './win-function-app-service-template-spec.bicep' = {
   name: 'winFunctionAppServiceDeployment'
-  params:{
+  params: {
     winFunctionAppName: winFunctionAppNameMain
     storageAccountConnectionString: winStorageAccountDeployment.outputs.storageAccountConnectionString
     mongoDbConnectionString: mongoDbConnectionStringMain 
