@@ -1,0 +1,477 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "winStorageAccountNameMain": {
+      "type": "string",
+      "defaultValue": "winstorageaccount"
+    },
+    "winApimNameMain": {
+      "type": "string",
+      "defaultValue": "win-apim"
+    },
+    "winApimPublisherEmailMain": {
+      "type": "string",
+      "defaultValue": "replace@this.com"
+    },
+    "winFunctionAppNameMain": {
+      "type": "string",
+      "defaultValue": "win-function-app"
+    },
+    "mongoDbConnectionStringMain": {
+      "type": "string",
+      "defaultValue": "override-with-a-mongo-db-connection-string"
+    }
+  },
+  "functions": [],
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "winStorageAccountDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "winStorageAccountName": {
+            "value": "[parameters('winStorageAccountNameMain')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "winStorageAccountName": {
+              "type": "string",
+              "defaultValue": "winstorageaccount"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2019-06-01",
+              "name": "[parameters('winStorageAccountName')]",
+              "location": "westeurope",
+              "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+              },
+              "kind": "Storage",
+              "properties": {
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "virtualNetworkRules": [],
+                  "ipRules": [],
+                  "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": false,
+                "encryption": {
+                  "services": {
+                    "file": {
+                      "enabled": true
+                    },
+                    "blob": {
+                      "enabled": true
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/default', parameters('winStorageAccountName'))]",
+              "properties": {
+                "cors": {
+                  "corsRules": []
+                },
+                "deleteRetentionPolicy": {
+                  "enabled": false
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/default', parameters('winStorageAccountName'))]",
+              "properties": {
+                "cors": {
+                  "corsRules": []
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/azure-pipelines-deploy', format('{0}/default', parameters('winStorageAccountName')))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', parameters('winStorageAccountName')), '/')[0], split(format('{0}/default', parameters('winStorageAccountName')), '/')[1])]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/azure-webjobs-hosts', format('{0}/default', parameters('winStorageAccountName')))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', parameters('winStorageAccountName')), '/')[0], split(format('{0}/default', parameters('winStorageAccountName')), '/')[1])]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/azure-webjobs-secrets', format('{0}/default', parameters('winStorageAccountName')))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', split(format('{0}/default', parameters('winStorageAccountName')), '/')[0], split(format('{0}/default', parameters('winStorageAccountName')), '/')[1])]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2019-06-01",
+              "name": "[format('{0}/{1}-winb6d9', format('{0}/default', parameters('winStorageAccountName')), parameters('winStorageAccountName'))]",
+              "properties": {
+                "shareQuota": 5120
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices', split(format('{0}/default', parameters('winStorageAccountName')), '/')[0], split(format('{0}/default', parameters('winStorageAccountName')), '/')[1])]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountConnectionString": {
+              "type": "string",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}', parameters('winStorageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('winStorageAccountName')), '2019-06-01').keys[0].value)]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "winApimServiceDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "winApimName": {
+            "value": "[parameters('winApimNameMain')]"
+          },
+          "winApimPublisherEmail": {
+            "value": "[parameters('winApimPublisherEmailMain')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "winApimName": {
+              "type": "string",
+              "defaultValue": "win-apim"
+            },
+            "winApimPublisherEmail": {
+              "type": "string",
+              "defaultValue": "replace@this.com"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.ApiManagement/service",
+              "apiVersion": "2019-01-01",
+              "name": "[parameters('winApimName')]",
+              "location": "West Europe",
+              "sku": {
+                "name": "Consumption",
+                "capacity": 0
+              },
+              "properties": {
+                "publisherEmail": "[parameters('winApimPublisherEmail')]",
+                "publisherName": "[parameters('winApimName')]",
+                "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
+                "hostnameConfigurations": [
+                  {
+                    "type": "Proxy",
+                    "hostName": "[format('{0}.azure-api.net', parameters('winApimName'))]",
+                    "negotiateClientCertificate": false,
+                    "defaultSslBinding": true
+                  }
+                ],
+                "customProperties": {
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+                },
+                "virtualNetworkType": "None",
+                "enableClientCertificate": false
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "winFunctionAppServiceDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "winFunctionAppName": {
+            "value": "[parameters('winFunctionAppNameMain')]"
+          },
+          "storageAccountConnectionString": {
+            "value": "[reference(extensionResourceId(resourceGroup().id, 'Microsoft.Resources/deployments', 'winStorageAccountDeployment'), '2019-10-01').outputs.storageAccountConnectionString.value]"
+          },
+          "mongoDbConnectionString": {
+            "value": "[parameters('mongoDbConnectionStringMain')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "winFunctionAppName": {
+              "type": "string",
+              "defaultValue": "win-function-app"
+            },
+            "serverFarmsPlanName": {
+              "type": "string",
+              "defaultValue": "function-app-plan"
+            },
+            "storageAccountConnectionString": {
+              "type": "string",
+              "defaultValue": "override-with-a-storage-account-connection-string"
+            },
+            "mongoDbConnectionString": {
+              "type": "string",
+              "defaultValue": "override-with-a-mongo-db-connection-string"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2018-02-01",
+              "name": "[parameters('serverFarmsPlanName')]",
+              "location": "West Europe",
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+              },
+              "kind": "functionapp",
+              "properties": {
+                "perSiteScaling": false,
+                "maximumElasticWorkerCount": 1,
+                "isSpot": false,
+                "reserved": false,
+                "isXenon": false,
+                "hyperV": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2018-11-01",
+              "name": "[parameters('winFunctionAppName')]",
+              "location": "West Europe",
+              "kind": "functionapp",
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[format('{0}.azurewebsites.net', parameters('winFunctionAppName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[format('{0}.scm.azurewebsites.net', parameters('winFunctionAppName'))]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('serverFarmsPlanName'))]",
+                "reserved": false,
+                "isXenon": false,
+                "hyperV": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 1536,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true,
+                "redundancyMode": "None",
+                "siteConfig": {
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[parameters('storageAccountConnectionString')]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~3"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "java"
+                    },
+                    {
+                      "name": "MONGO_DB_CONNECTION_STRING",
+                      "value": "[parameters('mongoDbConnectionString')]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[parameters('storageAccountConnectionString')]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(parameters('winFunctionAppName'))]"
+                    },
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('serverFarmsPlanName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2018-11-01",
+              "name": "[format('{0}/web', parameters('winFunctionAppName'))]",
+              "location": "West Europe",
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "phpVersion": "5.6",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "remoteDebuggingVersion": "VS2017",
+                "httpLoggingEnabled": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$sparetimedevs-win",
+                "scmType": "VSTSRM",
+                "use32BitWorkerProcess": false,
+                "webSocketsEnabled": false,
+                "alwaysOn": false,
+                "javaVersion": "1.8",
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": false
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "experiments": {
+                  "rampUpRules": []
+                },
+                "autoHealEnabled": false,
+                "cors": {
+                  "allowedOrigins": [
+                    "https://functions.azure.com",
+                    "https://functions-staging.azure.com",
+                    "https://functions-next.azure.com"
+                  ],
+                  "supportCredentials": false
+                },
+                "localMySqlEnabled": false,
+                "ipSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictionsUseMain": false,
+                "http20Enabled": true,
+                "minTlsVersion": "1.2",
+                "ftpsState": "Disabled",
+                "reservedInstanceCount": 0
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('winFunctionAppName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2018-11-01",
+              "name": "[format('{0}/{1}.azurewebsites.net', parameters('winFunctionAppName'), parameters('winFunctionAppName'))]",
+              "properties": {
+                "siteName": "sparetimedevs-win",
+                "hostNameType": "Verified"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('winFunctionAppName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(resourceGroup().id, 'Microsoft.Resources/deployments', 'winStorageAccountDeployment')]"
+      ]
+    }
+  ]
+}

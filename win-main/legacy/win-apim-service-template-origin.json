@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "winApimName": {
+      "defaultValue": "win-apim",
+      "type": "string"
+    },
+    "winApimPublisherEmail": {
+      "defaultValue": "replace@this.com",
+      "type": "string"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service",
+      "apiVersion": "2019-01-01",
+      "name": "[parameters('winApimName')]",
+      "location": "West Europe",
+      "sku": {
+        "name": "Consumption",
+        "capacity": 0
+      },
+      "properties": {
+        "publisherEmail": "[parameters('winApimPublisherEmail')]",
+        "publisherName": "[parameters('winApimName')]",
+        "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
+        "hostnameConfigurations": [
+          {
+            "type": "Proxy",
+            "hostName": "[concat(parameters('winApimName'), '.azure-api.net')]",
+            "negotiateClientCertificate": false,
+            "defaultSslBinding": true
+          }
+        ],
+        "customProperties": {
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+        },
+        "virtualNetworkType": "None",
+        "enableClientCertificate": false
+      }
+    }
+  ]
+}
